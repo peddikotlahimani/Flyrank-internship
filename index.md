@@ -2,30 +2,32 @@
 
 ## Abstract
 
-Content teams often assume that longer, more detailed articles perform better in search — but is that actually true? This project tested whether page freshness, word count, and content type are associated with click-through rate (CTR) using 30,000 anonymized pages from FlyRank's internship dataset. Using simple signal tests and a trained logistic regression model, freshness and content type showed strong, consistent links to CTR, while word count did not — shorter pages actually outperformed longer ones. A trained model using these signals barely beat random guessing, showing these three signals alone aren't enough to reliably predict CTR on their own. The findings point content teams toward prioritizing freshness and ranking position over content length when deciding what to fix first.
+I wanted to find out if things like how fresh a page is, how long it is, and what type it is actually affect how many people click on it. I used 30,000 pages of real (but anonymous) website data. I tested some ideas, built a simple rule, then trained a model and compared them. Turns out freshness and content type mattered a lot, but longer content didn't help — shorter pages actually did better. This could help someone running a website figure out what to fix first.
+
 
 ## Introduction
 
-Imagine a content team with limited time and a long list of pages to review. Should they rewrite short pages to make them longer? Focus on updating old content? Or look at ranking position first? Without data, this is a guess. This project set out to answer a narrower, testable version of that question: **which safe, available signals are actually associated with a page getting a good click-through rate?** The goal isn't to build a perfect predictive model — it's to give a content team evidence-backed priorities instead of assumptions.
+If you run a website with lots of pages, you can't fix all of them at once. Should you make pages longer? Update old ones? I wanted to actually check what helps, instead of just guessing.
+
 
 ## Data
 
-This analysis used the starter dataset from FlyRank's ML internship program: `content_refresh_anonymized.csv`, containing 30,000 rows (one per content page) across 32 pseudonymized clients. All metrics are aggregated over a trailing 90-day window. This is a teaching-sized slice, not the full ~79-million-row warehouse release — a scope limitation noted below.
+I used a file with 30,000 web pages. It had stuff like how many people saw each page, how many clicked, how long the page was, and when it was last updated. I skipped a few columns on purpose because using them would've been like peeking at the answer early.
 
 **Excluded from this analysis:**
-- `trend_direction` and `trend_pct` — reserved as label-source columns for a separate decline-prediction pipeline; using them here risked leakage
-- `provider_used` and `model_used` — marked as non-feature columns in the data dictionary
-- No client names, URLs, or private identifiers appear anywhere; all IDs are pre-existing pseudonyms
+
+I used a file with 30,000 web pages. It had stuff like how many people saw each page, how many clicked, how long the page was, and when it was last updated. I didn't use two columns called trend_direction and trend_pct, because those were meant to be used as the "answer" for a different question, so using them here would've been cheating. I also skipped two columns about which AI tool wrote the content, since I was told those aren't supposed to be used as signals. No real names or private info are anywhere in this data -- everything is already anonymous.
 
 ## Methodology
-
-**Label:** A page was defined as having "good CTR" if its CTR was at or above the dataset average (0.51%).
+**Assumptions:**I assumed the 90-day numbers in this data are pretty normal, not from some one-time event. I also assumed word count, impressions, and freshness are things a real team could actually check and fix, which is why I picked those three.
 
 **Features tested:** `word_count`, `impressions_90d`, and `days_since_last_update` — all safe, non-leaking signals a content team could realistically act on.
 
+**Label:** A page was defined as having "good CTR" if its CTR was at or above the dataset average (0.51%).
+
 **Baseline:** A transparent, hand-written rule scoring pages on content length, visibility, and freshness. An initial version of this baseline accidentally used `ctr` directly to build its score, producing an artificially perfect result; this was identified and corrected to use only the same three features available to the model, for a fair comparison.
 
-**Validation design:** Data was split by `client_id` (not randomly) into 80% training and 20% test, ensuring no client's pages appeared in both sets — verified with a zero-overlap check. This guards against the model simply memorizing a client's typical behavior rather than learning a generalizable pattern.
+**Validation design:** Data was split by `client_id` (not randomly) into training and test, ensuring no client's pages appeared in both sets — verified with a zero-overlap check. This guards against the model simply memorizing a client's typical behavior rather than learning a generalizable pattern.
 
 **Leakage checks:** Excluded columns were explicitly tested against the feature list used in modeling, confirming no label-source or disallowed columns were used.
 
@@ -37,7 +39,7 @@ This analysis used the starter dataset from FlyRank's ML internship program: `co
 | Fair rule-based baseline | 0.18 |
 | Trained model (Logistic Regression) | 0.14 |
 
-The rule-based baseline modestly outperformed the trained model, and both only slightly beat random guessing. Examining the model's behavior directly explains why: of 6,163 test pages, the model predicted "high CTR" for only 5 — it defaulted to "low CTR" almost universally, reflecting weak confidence across all three features (all feature weights were extremely small in magnitude).
+My simple hand-made rule did a little better than my trained model, and both barely beat just guessing randomly. Freshness and content type really did matter. But longer content didn't help at all -- shorter pages actually got more clicks, which I didn't expect.
 
 **Signal test results:**
 - **Freshness → CTR:** recently updated pages averaged 0.73 CTR vs. 0.26 for older pages (≈3× higher) — **confirmed**
@@ -47,7 +49,13 @@ The rule-based baseline modestly outperformed the trained model, and both only s
 
 ## Limitations & Honest Framing
 
-These results are based on a 30,000-row teaching slice, not the full warehouse release, and reflect a single 90-day window — seasonal or scale effects are untested. All relationships reported are **observed associations, not proven causes**: freshness and CTR moving together does not establish that updating a page directly causes higher CTR (better-performing pages may simply get updated more often for unrelated reasons). The trained model's weak performance indicates that word count, impressions, and freshness alone are insufficient to reliably predict CTR — other unmeasured factors likely matter more. These findings should be treated as **directional, decision-support signals**, not guarantees.
+I only used a small chunk of data, not everything, and just one 90-day period, so I don't know if this would look the same at a different time.
+
+I can't say for sure that updating a page causes more clicks -- I just observed that they tend to happen together. So this is more of a directional hint, not a proven fact.
+
+My model wasn't very confident either, so I can't fully trust its guesses.
+
+Because of all this, everything in this paper should be treated as decision-support, meaning it's a helpful starting point to guide what to check next, not a guaranteed answer.
 
 ## Ranked Recommendations
 
@@ -59,7 +67,7 @@ These results are based on a 30,000-row teaching slice, not the full warehouse r
 
 ## Reproducibility
 
-All analysis is available in the linked repository under `work/notebooks/`: `w03_data_contract.ipynb`, `w03_feature_leakage_check.ipynb`, `w04_baseline_score.ipynb`, `w04_signal_audit.ipynb`, `w05_model.ipynb`, and `capstone.ipynb`. All random operations use a fixed seed (`random_state=42`) for reproducibility. Data can be reloaded directly from the repository's raw CSV path referenced in each notebook.
+All analysis is available in the linked repository under `work/notebooks/`: `w03_data_contract.ipynb`, `w03_feature_leakage_check.ipynb`, `w04_baseline_score.ipynb`, `w04_signal_audit.ipynb`, `w05_model.ipynb`, and `capstone.ipynb`. All my work is saved in my GitHub repo, in notebooks anyone can open and rerun.
 
 **Repository:** [github.com/peddikotlahimani/Flyrank-internship](https://github.com/peddikotlahimani/Flyrank-internship)
 
