@@ -23,7 +23,7 @@ I used a file with 30,000 web pages. It had stuff like how many people saw each 
 
 **Features tested:** `word_count`, `impressions_90d`, and `days_since_last_update` — all safe, non-leaking signals a content team could realistically act on.
 
-**Label:** A page was defined as having "good CTR" if its CTR was at or above the dataset average (0.51%).
+**Label:** A page was defined as having "good CTR" if its CTR was at or above the dataset average (0.51%). 
 
 **Baseline:** A transparent, hand-written rule scoring pages on content length, visibility, and freshness. An initial version of this baseline accidentally used `ctr` directly to build its score, producing an artificially perfect result; this was identified and corrected to use only the same three features available to the model, for a fair comparison.
 
